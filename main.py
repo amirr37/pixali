@@ -1,70 +1,33 @@
-# --------------------------------------------------------------------config
 import requests
 import telebot
 from telebot import types
-import datetime
-import gspread
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButtonPollType
-import uuid
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from db_connector import DatabaseOperations
 
-# http=192.168.1.10:10810;socks=192.168.1.10:10808
 
 # Bot setup
 api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
 bot = telebot.TeleBot(api_key)
 
-# Google Sheets setup
-service_account = gspread.service_account()
-sheet = service_account.open('my_bot')
-contact_us_worksheet = sheet.worksheet('contact_us')
-credit_worksheet = sheet.worksheet('credits')
-images_worksheet = sheet.worksheet('images')
-banner_worksheet = sheet.worksheet('banners')
-# --------------------------------------------------------------------variables
-
-# User states
-user_states = {}
-descriptions = {}  # A dictionary to store the descriptions temporarily
-packages = {}
-users_credit = {}
-user_invite_links = {}
-user_qualities = {}
-user_resolutions = {}
 
 
-# -------------------------------------------------------------------- /start /restart
-# Start command handler
 @bot.message_handler(commands=['start', 'restart'])
 def start(message):
     user_id = message.from_user.id
-    user_exists = is_user_in_sheet(user_id)
+    user_exists = DatabaseOperations.is_user_exists(user_id)
     if not user_exists:
-        add_user_to_sheet(user_id, initial_credit=10000)
+        DatabaseOperations.add_user(user_id)
 
     if message.text.startswith('/start') and not user_exists:
         parts = message.text.split(' ')
         if len(parts) > 1:
-            invite_token = parts[1]
-            inviter_user_id = get_invite_token_user(invite_token)
+            invite_link = parts[1]
+            inviter_user_id = DatabaseOperations.get_user_invite_link(invite_link)
             if inviter_user_id:
-                # increase user_id credit as 5000
-                current_credit = get_user_credit(inviter_user_id)
-                update_user_credit(inviter_user_id, current_credit + 5000)
-
+                DatabaseOperations.increase_user_credit(inviter_user_id, 7000)
     show_main_menu(message)
 
 
-def is_user_in_sheet(user_id):
-    user_ids = credit_worksheet.col_values(1)[1:]  # Skip the header
-    return str(user_id) in user_ids
-
-
-def add_user_to_sheet(user_id, initial_credit):
-    # Add the user_id and initial_credit to the credits sheet
-    credit_worksheet.append_row([str(user_id), initial_credit])
-
-
-# -------------------------------------------------------------------- /message handler
 
 
 # Message handler
@@ -95,40 +58,24 @@ def handle_message(message):
         bot.reply_to(message, "متوجه نشدم ، چه کاری برات انجام بدم ؟")
 
 
-# region gallery
 
 def user_gallery(message, user_id):
-    # Assuming 'sheet' is the variable representing 'images_worksheet'
-    data = images_worksheet.get_all_values()
-
-    # Extract column headers
-    headers = data[0]
-
-    # Find the index of the 'user_id' column
-    user_id_index = headers.index('user_id')
-
-    # Find rows where user_id matches
-    user_rows = [row for row in data[1:] if row[user_id_index] == str(user_id)]
-
+    user_rows = DatabaseOperations.get_user_images(user_id)
     if not user_rows:
         bot.send_message(message.chat.id, "شما تا کنون عکسی ایجاد نکردی :)")
     else:
+
         for row in user_rows:
-            image_description = row[headers.index('image description')]
-            resolution = row[headers.index('resolution')]
-            quality = row[headers.index('quality')]
-            image_url = row[headers.index('image_url')]
-            generation_date = row[headers.index('generation_date')]
-            response_message = f"توصیف عکس: {image_description}\n\nابعاد: {resolution}\n\nکیفیت: {quality}\n\nتاریخ ایجاد: {generation_date}\n\n"
+            response_message = f"توصیف عکس: {row.image_description}\n\nابعاد: {row.resolution}\n\nکیفیت: {row.quality}\n\nتاریخ ایجاد: {row.generation_date}\n\n"
 
             markup = InlineKeyboardMarkup(row_width=3)
-            button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{image_url}")
-            button1 = InlineKeyboardButton("لینک اصلی عکس", url=image_url)
+            button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{row.image_url}")
+            button1 = InlineKeyboardButton("لینک اصلی عکس", url=row.image_url)
 
             markup.row(button0)
             markup.row(button1)
 
-            bot.send_photo(message.chat.id, photo=image_url, caption=response_message, reply_markup=markup, )
+            bot.send_photo(message.chat.id, photo=row.image_url, caption=response_message, reply_markup=markup, )
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -186,20 +133,19 @@ def show_main_menu(message):
 
 
 def handle_contact_us(message, user_id):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
     button_text = 'برگرد منوی اصلی 🏠'
     markup.add(types.KeyboardButton(button_text))
     bot.send_message(message.chat.id, "خب حالا پیامت رو بنویس 🙂", reply_markup=markup)
-    bot.register_next_step_handler(message, process_user_message, current_time, user_id)
+    bot.register_next_step_handler(message, process_user_message, user_id)
 
 
-def process_user_message(message, current_time, user_id):
+def process_user_message(message, user_id):
     user_message = message.text
     if user_message == 'برگرد منوی اصلی 🏠':
         pass
     else:
-        contact_us_worksheet.append_row([user_message, current_time, user_id])
+        DatabaseOperations.create_message(user_id, content=user_message)
         bot.reply_to(message, "پیامت با موفقیت ارسال شد 🙌")
     show_main_menu(message)
 
@@ -207,12 +153,12 @@ def process_user_message(message, current_time, user_id):
 # endregion
 
 # region increase credit
-# todo
+
 
 
 def increase_credit(message, user_id):
     # Get the user's current credit from the sheet
-    user_credit = get_user_credit(user_id)
+    user_credit = DatabaseOperations.get_user_credit(user_id)
 
     info_message = f"""
 اعتباری که الان داری : {user_credit} تومان
@@ -267,77 +213,19 @@ def create_check_pay_message(callback_data: str):
 
 def get_banner_message(call, user_id):
     bot_username = "amirr_37bot"  # Replace with your bot's username
-    invite_token = get_user_invite_token(user_id)
-    if not invite_token:
-        invite_token = str(uuid.uuid4())
-        banner_worksheet.append_row([str(user_id), invite_token])
-
-    invite_link = f"https://t.me/{bot_username}?start={invite_token}"
+    invite_link = DatabaseOperations.get_user_invite_link(user_id)
+    full_invite_link = f"https://t.me/{bot_username}?start={invite_link}"
     message = f"""
 این لینک دعوت توعه 
-{invite_link}
+{full_invite_link}
                """
     return message
-
-
-def get_invite_token_user(token):
-    user_ids_and_tokens = banner_worksheet.get_all_values()[1:]  # Skip the header
-
-    for row in user_ids_and_tokens:
-        if token == row[1]:
-            return row[0]  # Return the user_id associated with the token
-
-    return None
-
-
-def get_user_invite_token(user_id):
-    # Fetch all user_ids and credit values from the credit sheet
-    user_ids_and_tokens = banner_worksheet.get_all_values()[1:]  # Skip the header
-    print(user_ids_and_tokens)
-    # Iterate through the rows to find the user_id
-    for row in user_ids_and_tokens:
-        if str(user_id) in row:
-            return row[1]
-
-    # Return 0 if user_id is not found in the sheet
-    return 0
-
-
-def get_user_credit(user_id):
-    # Fetch all user_ids and credit values from the credit sheet
-    user_ids_and_credits = credit_worksheet.get_all_values()[1:]  # Skip the header
-
-    # Iterate through the rows to find the user_id
-    for row in user_ids_and_credits:
-        if str(user_id) in row:
-            # Extract the credit value if the user_id is found
-            return int(row[1])
-
-    # Return 0 if user_id is not found in the sheet
-    return 0
-
-
-def update_user_credit(user_id, new_credit):
-    # Fetch all user_ids and credit values from the credit sheet
-    user_ids_and_credits = credit_worksheet.get_all_values()[1:]  # Skip the header
-
-    # Iterate through the rows to find the user_id
-    for row in user_ids_and_credits:
-        if str(user_id) in row:
-            # Update the credit value if the user_id is found
-            row_index = user_ids_and_credits.index(row) + 2  # Adjust for 0-based index and header row
-            credit_worksheet.update(f'B{row_index}', new_credit)
-            return
-
-    # If the user_id is not found, create a new row
-    credit_worksheet.append_row([str(user_id), new_credit])
 
 
 # endregion
 
 # region generate image
 def handle_generate_image(user_id, message):
-    user_states[user_id] = 'awaiting_image_description'
 
     markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
     button_text = 'برگرد منوی اصلی 🏠'
@@ -353,7 +241,6 @@ def process_image_description(message, user_id):
         show_main_menu(message)
     else:
         # User must now choose the quality
-        descriptions[user_id] = user_message
 
         # Create buttons for quality
         markup = types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True, resize_keyboard=True)
@@ -396,19 +283,10 @@ def process_image_quality(message, user_id):
 def process_image_resolution(message, user_id):
     user_resolution: str = message.text
     if user_resolution == 'میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️':
-        # bot.send_message(message.chat.id, "حالا ابعاد عکس رو انتخاب کن:", reply_markup=get_resolutions_markup())
         process_image_description(message, user_id)  # Go back to the image quality step
     else:
-        res = user_resolution.split('')[0]
-        user_resolutions[user_id] = user_resolution.split('')[0]
-
-        data = {'user_id': user_id,
-                'prompt': descriptions[user_id],
-                'quality': "HD" if user_qualities[user_id] == 'HD 🚀' else 'standard',
-                'resolution': user_resolutions[user_id]}
 
         print(f"User {user_id} selected resolution: {user_resolution}")
-        # You can now proceed with further actions based on the selected resolution and quality
         show_main_menu(message)
 
 
@@ -447,6 +325,4 @@ def get_resolutions_for_standard_markup():
 
 
 # endregion
-
-
 bot.polling()
