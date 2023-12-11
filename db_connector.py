@@ -16,15 +16,20 @@ class User(Base):
     invite_link = Column(Text)
 
 
+from sqlalchemy import Column, Integer, Text, DateTime
+from sqlalchemy.sql import func
+
+
 class Images(Base):
     __tablename__ = 'images'
-    user_id = Column(Integer, primary_key=True)
+
+    image_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
     image_description = Column(Text)
     resolution = Column(Text(length=20))
     quality = Column(Text(length=20))
     image_url = Column(Text)
-    # generation_date = Column(DateTime, default=datetime.now, primary_key=True)
-    generation_date = Column(DateTime, default=datetime.now, server_default=func.now(), primary_key=True)
+    generation_date = Column(DateTime, default=func.now())
 
 
 class Messages(Base):
@@ -104,11 +109,11 @@ class DatabaseOperations:
         return user.invite_link if user else None
 
     @classmethod
-    def create_image(cls, user_id, image_description, resolution, quality, image_url):
+    def create_image(cls, user_id, prompt, size, quality, image_url):
         new_image = Images(
             user_id=user_id,
-            image_description=image_description,
-            resolution=resolution,
+            image_description=prompt,
+            resolution=size,
             quality=quality,
             image_url=image_url
         )
@@ -120,9 +125,7 @@ class DatabaseOperations:
     def get_user_images(cls, user_id) -> list:
         with cls.Session() as session:
             # Fetch the images
-            print("--------------------------------------")
             images = session.query(Images).filter_by(user_id=user_id).all()
-            print("--------------------------------------")
             # Convert the generation_date to a string representation
             # for image in images:
             #     image.generation_date = image.generation_date.isoformat() if image.generation_date else None
@@ -143,6 +146,7 @@ class DatabaseOperations:
         user = cls.session.query(User).filter_by(invite_link=invite_link).first()
         return user.user_id if user else None
 
-#
-# DatabaseOperations.create_image(user_id='1754664857', image_description='man strong man.', resolution='1024x1024',
-#                                 quality='HD',image_url='https://s6.uupload.ir/files/derfwe_uvoa.jpg', )
+    @classmethod
+    def get_image_url(cls, image_id):
+        image = cls.session.query(Images).filter_by(image_id=image_id).first()
+        return image.image_url if image else None

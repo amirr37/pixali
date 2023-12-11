@@ -5,11 +5,17 @@ import telebot
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
+from openAI_connector import generate_image_openAI
 
 # Bot setup
 api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
 bot = telebot.TeleBot(api_key)
+# ------------------------------------------
+users_data = {}
+users_state = {}
 
+
+# ------------------------------------------
 
 @bot.message_handler(commands=['start', 'restart'])
 def start(message):
@@ -56,7 +62,7 @@ def handle_message(message):
 
 
 def zarinpaal(message, user_id):
-    print("hereeeeeeeeeeeeeeeee")
+    pass
 
 
 def user_gallery(message, user_id):
@@ -66,14 +72,10 @@ def user_gallery(message, user_id):
     else:
 
         for row in user_rows:
-            print(jdatetime.datetime.now())
-            print(type(jdatetime.datetime.now()))
-            print(type(row.generation_date))
-
-            response_message = f"✍️ توصیف عکس:\n {row.image_description}\n\n📐 ابعاد: {row.resolution}\n\n💎 کیفیت: {row.quality}\n\n📅 تاریخ ایجاد: {row.generation_date}\n\n"
+            response_message = f"✍️ توصیف عکس:\n {row.image_description}\n\n📐 ابعاد: {row.resolution}\n\n💎 کیفیت: {row.quality}\n\n📅 تاریخ ایجاد: {row.generation_date.year}/{row.generation_date.month}/{row.generation_date.day}\n\n"
 
             markup = InlineKeyboardMarkup(row_width=3)
-            button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{row.image_url}")
+            button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{row.image_id}")
             button1 = InlineKeyboardButton("لینک اصلی عکس", url=row.image_url)
 
             markup.row(button0)
@@ -88,8 +90,13 @@ def callback_query(call):
         message = get_banner_message(call, call.from_user.id)
         bot.send_message(call.from_user.id, message)
     elif call.data.startswith("image_url_"):
-        image_url = call.data[len("image_url_"):]
+        bot.send_message(call.message.chat.id,  # Use call.message.chat.id
+                         "تا چند لحظه دیگه عکس برات ارسال میشه :)")
+
+        image_id = int(call.data[len("image_url_"):])
+        image_url = DatabaseOperations.get_image_url(image_id)
         send_image_file_with_url(chat_id=call.message.chat.id, image_url=image_url)
+
     else:
         message = create_check_pay_message(call.data)
         bot.answer_callback_query(call.id, message)
@@ -97,7 +104,6 @@ def callback_query(call):
 
 def send_image_file_with_url(chat_id, image_url, caption_text=None):
     image_file = requests.get(image_url)
-
     # Save the image file locally
     with open('image.jpg', 'wb') as f:
         f.write(image_file.content)
@@ -164,7 +170,7 @@ def increase_credit(message, user_id):
     user_credit = DatabaseOperations.get_user_credit(user_id)
 
     info_message = f"""
-اعتباری که الان داری : {user_credit} تومان
+💰 اعتباری که الان داری : {user_credit} تومان
 
 ❓ چطوری اعتبار خودمو افزایش بدم ؟
 
@@ -172,13 +178,12 @@ def increase_credit(message, user_id):
 
 1️⃣ روش رایگان     
 برای افزایش اعتبار رایگان ، میتون بنر مخحصوصت رو برای دوستات فوروارد کنی. به ازای هر نفر که به ربات اضافه بشه و عکس بسازه ، 5000 تومان اعتبار رایگان دریافت میکنی😃
+
 ــــــــــــــــــــــــــــــــــــــــ
 
 2️⃣ روش خرید اعتبار         
 می تونی یکی از گزینه های زیر رو انتخاب و خرید کنی  👇 
 
-ــــــــــــــــــــــــــــــــــــــــ
-    
 
     """
 
@@ -219,7 +224,10 @@ def get_banner_message(call, user_id):
     invite_link = DatabaseOperations.get_user_invite_link(user_id)
     full_invite_link = f"https://t.me/{bot_username}?start={invite_link}"
     message = f"""
-این لینک دعوت توعه 
+    عکسی که میخوای رو پیدا نمیکنی؟ 😕
+بیا تو پیکسالی و هر عکسی که میخوای رو توصیف کن تا برات بسازه 
+
+عکسی که میخوای رو بساز 👇
 {full_invite_link}
                """
     return message
@@ -242,9 +250,12 @@ def process_image_description(message, user_id):
     if user_message == 'برگرد منوی اصلی 🏠':
         show_main_menu(message)
     else:
+        users_data[user_id] = {}
+        users_data[user_id]['prompt'] = user_message
         # User must now choose the quality
 
         # Create buttons for quality
+
         markup = types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True, resize_keyboard=True)
         button_hd = types.KeyboardButton('HD 🚀')
         button_standard = types.KeyboardButton('Standard')
@@ -253,12 +264,10 @@ def process_image_description(message, user_id):
         markup.add(button_hd, button_standard)
         markup.row(button_correction)
         quality_msg = """
-حالا کیفیت عکس رو انتخاب کن:
-
+💎  حالا کیفیت عکس رو انتخاب کن:
 ــــــــــــــــــــــــــــــــــــــــ
 
 عکسای استاندرارد 2️⃣ تا 4️⃣ امتیاز میخوان
-
 
 🚀 عکسای اچ دی 4️⃣ تا 6️⃣ امتیاز میخوان 
 
@@ -272,31 +281,79 @@ def process_image_description(message, user_id):
 
 def process_image_quality(message, user_id):
     user_quality = message.text
+    qualities = {
+        'HD 🚀': 'hd',
+        'Standard': 'standard'
+
+    }
     if user_quality == 'میخواهم متنم رو اصلاح کنم ↩️':
         handle_generate_image(user_id, message)  # Go back to the image description step
+    elif user_quality not in qualities.keys():
+        bot.send_message(message.chat.id, "متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن ")
+        # process_image_quality(message, user_id)
+        bot.register_next_step_handler(message, lambda msg: process_image_quality(msg, user_id))
+
     else:
 
-        print(f"User {user_id} selected quality: {user_quality}")
+        users_data[user_id]['quality'] = qualities[user_quality]
+
         bot.send_message(message.chat.id, "حالا ابعاد عکس رو انتخاب کن:",
                          reply_markup=get_resolutions_for_hd_markup() if user_quality == 'HD 🚀' else get_resolutions_for_standard_markup())
-        bot.register_next_step_handler(message, process_image_resolution, user_id)
+        bot.register_next_step_handler(message, process_image_size, user_id)
 
 
-def process_image_resolution(message, user_id):
-    user_resolution: str = message.text
-    if user_resolution == 'میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️':
+def process_image_size(message, user_id):
+    user_size: str = message.text
+    resolutions = {
+        'افقی - 6 امتیاز': '1792x1024',
+        'افقی - 4 امتیاز': '1792x1024',
+        'عمودی - 6 امتیاز': '1024x1792',
+        'عمودی - 4 امتیاز': '1024x1792',
+        'یک در یک - 4 امتیاز': '1024x1024',
+        'یک در یک - 2 امتیاز': '1024x1024'
+
+    }
+    if user_size == 'میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️':
         process_image_description(message, user_id)  # Go back to the image quality step
+    elif user_size not in resolutions.keys():
+        bot.send_message(message.chat.id, "متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن ")
+        bot.register_next_step_handler(message, lambda msg: process_image_size(msg, user_id))
+
     else:
 
-        print(f"User {user_id} selected resolution: {user_resolution}")
-        show_main_menu(message)
+        users_data[user_id]['size'] = resolutions[user_size]
+        send_request_to_dall_e(message, user_id)
+        # show_main_menu(message)
+
+
+def send_request_to_dall_e(message, user_id):
+    bot.send_message(message.chat.id, "در حال درست کردن عکسی که خواستی هستیم...کمتر از یک دقیقه دیگه عکست آمادست :)")
+
+    data = users_data[user_id]
+    image_url = generate_image_openAI(users_data[user_id])
+    prompt = data['prompt']
+    size = data['size']
+    quality = data['quality']
+    new_image = DatabaseOperations.create_image(user_id, prompt, size, quality, image_url)
+
+    response_message = f"✍️ توصیف عکس:\n {prompt}\n\n📐 ابعاد: {size}\n\n💎 کیفیت: {quality}\n\n📅 تاریخ ایجاد: {datetime.datetime.now()}\n\n"
+
+    markup = InlineKeyboardMarkup(row_width=3)
+    button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{new_image.image_id}")
+    button1 = InlineKeyboardButton("لینک اصلی عکس", url=image_url)
+
+    markup.row(button0)
+    markup.row(button1)
+
+    bot.send_photo(message.chat.id, photo=image_url, caption=response_message, reply_markup=markup)
+    show_main_menu(message)
 
 
 def get_resolutions_for_hd_markup():
     markup = types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True, resize_keyboard=True)
-    button_resolution1 = types.KeyboardButton('1024x1792 - 6 امتیاز')
-    button_resolution2 = types.KeyboardButton('1792x1024 - 6 امتیاز')
-    button_resolution3 = types.KeyboardButton('1024x1024 - 4 امتیاز')
+    button_resolution1 = types.KeyboardButton('افقی - 6 امتیاز')
+    button_resolution2 = types.KeyboardButton('عمودی - 6 امتیاز')
+    button_resolution3 = types.KeyboardButton('یک در یک - 4 امتیاز')
     button_correction = types.KeyboardButton('میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️')
 
     # markup.row(button_resolution1)
@@ -311,9 +368,9 @@ def get_resolutions_for_hd_markup():
 
 def get_resolutions_for_standard_markup():
     markup = types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True, resize_keyboard=True)
-    button_resolution1 = types.KeyboardButton('1024x1792 - 4 امتیاز')
-    button_resolution2 = types.KeyboardButton('1792x1024 - 4 امتیاز')
-    button_resolution3 = types.KeyboardButton('1024x1024 - 2 امتیاز')
+    button_resolution1 = types.KeyboardButton('افقی - 4 امتیاز')
+    button_resolution2 = types.KeyboardButton('عمودی - 4 امتیاز')
+    button_resolution3 = types.KeyboardButton('یک در یک - 2 امتیاز')
 
     button_correction = types.KeyboardButton('میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️')
 
