@@ -1,14 +1,14 @@
+import datetime
+import jdatetime
 import requests
 import telebot
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
 
-
 # Bot setup
 api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
 bot = telebot.TeleBot(api_key)
-
 
 
 @bot.message_handler(commands=['start', 'restart'])
@@ -26,8 +26,6 @@ def start(message):
             if inviter_user_id:
                 DatabaseOperations.increase_user_credit(inviter_user_id, 7000)
     show_main_menu(message)
-
-
 
 
 # Message handler
@@ -50,13 +48,15 @@ def handle_message(message):
         pass
     elif message.text == 'تماس با مدیریت 📫':
         handle_contact_us(message, user_id)
-
+    elif message.text == 'pay':
+        zarinpaal(message, user_id)
     else:
-        print("dffdfd")
-        print(message.text)
-        print(message.text == 'عکس های من 🖼️')
+
         bot.reply_to(message, "متوجه نشدم ، چه کاری برات انجام بدم ؟")
 
+
+def zarinpaal(message, user_id):
+    print("hereeeeeeeeeeeeeeeee")
 
 
 def user_gallery(message, user_id):
@@ -66,7 +66,11 @@ def user_gallery(message, user_id):
     else:
 
         for row in user_rows:
-            response_message = f"توصیف عکس: {row.image_description}\n\nابعاد: {row.resolution}\n\nکیفیت: {row.quality}\n\nتاریخ ایجاد: {row.generation_date}\n\n"
+            print(jdatetime.datetime.now())
+            print(type(jdatetime.datetime.now()))
+            print(type(row.generation_date))
+
+            response_message = f"✍️ توصیف عکس:\n {row.image_description}\n\n📐 ابعاد: {row.resolution}\n\n💎 کیفیت: {row.quality}\n\n📅 تاریخ ایجاد: {row.generation_date}\n\n"
 
             markup = InlineKeyboardMarkup(row_width=3)
             button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{row.image_url}")
@@ -155,7 +159,6 @@ def process_user_message(message, user_id):
 # region increase credit
 
 
-
 def increase_credit(message, user_id):
     # Get the user's current credit from the sheet
     user_credit = DatabaseOperations.get_user_credit(user_id)
@@ -168,7 +171,7 @@ def increase_credit(message, user_id):
 ــــــــــــــــــــــــــــــــــــــــ
 
 1️⃣ روش رایگان     
-
+برای افزایش اعتبار رایگان ، میتون بنر مخحصوصت رو برای دوستات فوروارد کنی. به ازای هر نفر که به ربات اضافه بشه و عکس بسازه ، 5000 تومان اعتبار رایگان دریافت میکنی😃
 ــــــــــــــــــــــــــــــــــــــــ
 
 2️⃣ روش خرید اعتبار         
@@ -226,7 +229,6 @@ def get_banner_message(call, user_id):
 
 # region generate image
 def handle_generate_image(user_id, message):
-
     markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
     button_text = 'برگرد منوی اصلی 🏠'
     markup.add(types.KeyboardButton(button_text))

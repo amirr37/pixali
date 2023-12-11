@@ -124,8 +124,8 @@ class DatabaseOperations:
             images = session.query(Images).filter_by(user_id=user_id).all()
             print("--------------------------------------")
             # Convert the generation_date to a string representation
-            for image in images:
-                image.generation_date = image.generation_date.isoformat() if image.generation_date else None
+            # for image in images:
+            #     image.generation_date = image.generation_date.isoformat() if image.generation_date else None
             return images
 
     @classmethod
