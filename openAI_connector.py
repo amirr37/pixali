@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-client = OpenAI(api_key='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')
+client = OpenAI(api_key='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')
 
 
 # response = client.images.generate(
@@ -27,7 +27,7 @@ def generate_image_openAI(data: dict) -> str:
 
     response = client.images.generate(
         model="dall-e-3",
-        prompt=data['prompt'],
+        prompt=data['prompt']+ "I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS:",
         size=data['size'],
         quality=data['quality'],
         n=1,

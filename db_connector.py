@@ -115,7 +115,8 @@ class DatabaseOperations:
             image_description=prompt,
             resolution=size,
             quality=quality,
-            image_url=image_url
+            image_url=image_url,
+            generation_date=datetime.now()
         )
         cls.session.add(new_image)
         cls.session.commit()

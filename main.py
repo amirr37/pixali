@@ -1,5 +1,4 @@
 import datetime
-import jdatetime
 import requests
 import telebot
 from telebot import types
@@ -77,11 +76,13 @@ def user_gallery(message, user_id):
             markup = InlineKeyboardMarkup(row_width=3)
             button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{row.image_id}")
             button1 = InlineKeyboardButton("لینک اصلی عکس", url=row.image_url)
+            # if row.generation_date was in an hour ago , add buttn 0 and button1 into markap
 
-            markup.row(button0)
-            markup.row(button1)
-
-            bot.send_photo(message.chat.id, photo=row.image_url, caption=response_message, reply_markup=markup, )
+            if (datetime.datetime.now() - row.generation_date).total_seconds() < 3600:
+                markup.row(button0)
+                markup.row(button1)
+            bot.send_photo(message.chat.id, photo=row.image_url, caption=response_message, reply_markup=markup)
+        show_main_menu(message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -194,15 +195,18 @@ def get_pricing_markup():
     markup = InlineKeyboardMarkup(row_width=3)
     # markup.row_width = 2
     button0 = InlineKeyboardButton("دریافت اعتبار رایگان", callback_data="free")
-    button1 = InlineKeyboardButton("100 امتیاز 10,000 تومان", callback_data="100-point-10000-toman")
-    button2 = InlineKeyboardButton("200 امتیاز 16,000 تومان", callback_data="200-point-16000-toman")
-    button3 = InlineKeyboardButton("400 امتیاز 30,000 تومان", callback_data="400-point-30000-toman")
-    button4 = InlineKeyboardButton("800 امتیاز 50,000 تومان", callback_data="800-point-50000-toman")
+    button1 = InlineKeyboardButton("5 امتیاز 10 تومان", callback_data="pay_10")
+    button2 = InlineKeyboardButton("10 امتیاز 20 تومان", callback_data="pay_20")
+    button3 = InlineKeyboardButton("20 امتیاز 35 تومان", callback_data="pay_35")
+    button4 = InlineKeyboardButton("40 امتیاز 65 تومان", callback_data="pay_65")
+    button5 = InlineKeyboardButton("80 امتیاز 120 تومان", callback_data="pay_120")
+
     markup.row(button0)
     markup.row(button1)
     markup.row(button2)
     markup.row(button3)
     markup.row(button4)
+    markup.row(button5)
     return markup
 
 
@@ -339,13 +343,16 @@ def send_request_to_dall_e(message, user_id):
     response_message = f"✍️ توصیف عکس:\n {prompt}\n\n📐 ابعاد: {size}\n\n💎 کیفیت: {quality}\n\n📅 تاریخ ایجاد: {datetime.datetime.now()}\n\n"
 
     markup = InlineKeyboardMarkup(row_width=3)
-    button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{new_image.image_id}")
+    # button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{new_image.image_id}")
     button1 = InlineKeyboardButton("لینک اصلی عکس", url=image_url)
 
-    markup.row(button0)
+    # markup.row(button0)
     markup.row(button1)
 
     bot.send_photo(message.chat.id, photo=image_url, caption=response_message, reply_markup=markup)
+    send_image_file_with_url(chat_id=message.chat.id, image_url=image_url)
+    bot.send_message(message.chat.id, "لینک اصلی عکس تا یک ساعت اعتبار داره. پس حتما فایل عکس رو یجا ذخیره کن :)")
+
     show_main_menu(message)
 
 
