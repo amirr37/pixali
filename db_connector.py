@@ -8,11 +8,17 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
+# todo : file converting
+# todo : database session
+# todo : invte link
+# todo : attention for low credit message
+# todo : fix command loop
+
 class User(Base):
     __tablename__ = 'user'
 
     user_id = Column(Integer, primary_key=True)
-    credit = Column(Integer, default=6000)
+    credit = Column(Integer, default=3)
     invite_link = Column(Text)
 
 
@@ -57,7 +63,12 @@ class DatabaseOperations:
     @classmethod
     def get_user_credit(cls, user_id):
         user = cls.session.query(User).filter_by(user_id=user_id).first()
-        return user.credit if user else None
+        if user:
+            return user.credit
+        else:
+            cls.create_message(user_id, f"user with this id doesn't exist {user_id}")
+            new_user = cls.add_user(user_id)
+            return new_user.credit
 
     @classmethod
     def is_user_exists(cls, user_id):
@@ -65,7 +76,7 @@ class DatabaseOperations:
         return user is not None
 
     @classmethod
-    def add_user(cls, user_id, credit=10000):
+    def add_user(cls, user_id, credit=3):
         existing_user = cls.session.query(User).filter_by(user_id=user_id).first()
         if existing_user:
             print(f"User with ID {user_id} already exists.")
@@ -91,6 +102,20 @@ class DatabaseOperations:
         if user:
             user.credit += amount
             cls.session.commit()
+            return user
+        return None
+
+    @classmethod
+    def decrease_user_credit(cls, user_id, amount):
+        user = cls.session.query(User).filter_by(user_id=user_id).first()
+        if user:
+            print("-------------------------------")
+            print(user.credit)
+            user.credit -= amount
+            cls.session.commit()
+            print(user.credit)
+            print("-------------------------------")
+
             return user
         return None
 

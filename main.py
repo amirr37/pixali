@@ -11,7 +11,6 @@ api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
 bot = telebot.TeleBot(api_key)
 # ------------------------------------------
 users_data = {}
-users_state = {}
 
 
 # ------------------------------------------
@@ -21,23 +20,40 @@ def start(message):
     user_id = message.from_user.id
     user_exists = DatabaseOperations.is_user_exists(user_id)
     if not user_exists:
+        print("user not exist------------------------------------------")
+        print("")
         DatabaseOperations.add_user(user_id)
-
+    else:
+        print("user exist------------------------------------------")
+    print(user_id)
+    print("---------------------------------------------------------")
     if message.text.startswith('/start') and not user_exists:
         parts = message.text.split(' ')
         if len(parts) > 1:
             invite_link = parts[1]
-            inviter_user_id = DatabaseOperations.get_user_invite_link(invite_link)
+            inviter_user_id = DatabaseOperations.get_user_by_invite_link(invite_link)
+            print("------------------------------------------")
+            print(f"invite link {invite_link}")
+            print("------------------------------------------")
+
             if inviter_user_id:
-                DatabaseOperations.increase_user_credit(inviter_user_id, 7000)
+                print("before increase-------------------")
+                DatabaseOperations.increase_user_credit(inviter_user_id, 3)
+                print("aftert increase-------------------")
+
     show_main_menu(message)
+
+
+@bot.message_handler(commands=['pay'])
+def go_to_increase_credit(message):
+    increase_credit(message, user_id=message.from_user.id)
 
 
 # Message handler
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.from_user.id
-    if message.text.lower() == 'برگرد به منوی اصلی':
+    if message.text.lower() == 'برگرد منوی اصلی 🏠':
         show_main_menu(message)
 
     elif message.text == 'برام عکس جدید بساز 📸':
@@ -57,7 +73,7 @@ def handle_message(message):
         zarinpaal(message, user_id)
     else:
 
-        bot.reply_to(message, "متوجه نشدم ، چه کاری برات انجام بدم ؟")
+        show_main_menu(message, didnt_understand=True)
 
 
 def zarinpaal(message, user_id):
@@ -115,14 +131,26 @@ def send_image_file_with_url(chat_id, image_url, caption_text=None):
     else:
         bot.send_document(chat_id=chat_id, document=open('image.jpg', 'rb'))
 
+    bot.send_message(chat_id, "لینک اصلی عکس تا یک ساعت اعتبار داره. پس حتما فایل عکس رو یجا ذخیره کن :)")
+
 
 # endregion
 
 
 # region main-menu
+# region main-menu
 
 
-def show_main_menu(message):
+def show_main_menu(message, didnt_understand=False):
+    markup = get_main_menu_markup()
+    if not didnt_understand:
+        bot.send_message(message.chat.id, "خب ، چه کاری برات انجام بدم؟", reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, "متوجه نشدم ، چه کاری برات انجام بدم؟", reply_markup=markup)
+
+
+# endregion
+def get_main_menu_markup():
     # Define buttons
     button1 = types.KeyboardButton('برام عکس جدید بساز 📸')
     button2 = types.KeyboardButton('عکس های من 🖼️')
@@ -135,10 +163,8 @@ def show_main_menu(message):
     markup.row(button1, button2)
     markup.row(button3, button4)
     markup.add(button5)
-    bot.send_message(message.chat.id, "خب ، چه کاری برات انجام بدم؟", reply_markup=markup)
+    return markup
 
-
-# endregion
 
 # region contact-us
 
@@ -171,14 +197,14 @@ def increase_credit(message, user_id):
     user_credit = DatabaseOperations.get_user_credit(user_id)
 
     info_message = f"""
-💰 اعتباری که الان داری : {user_credit} تومان
+💰 اعتباری که الان داری : {user_credit} 
 
 ❓ چطوری اعتبار خودمو افزایش بدم ؟
 
 ــــــــــــــــــــــــــــــــــــــــ
 
 1️⃣ روش رایگان     
-برای افزایش اعتبار رایگان ، میتون بنر مخحصوصت رو برای دوستات فوروارد کنی. به ازای هر نفر که به ربات اضافه بشه و عکس بسازه ، 5000 تومان اعتبار رایگان دریافت میکنی😃
+برای افزایش اعتبار رایگان ، میتون بنر مخحصوصت رو برای دوستات فوروارد کنی. به ازای هر نفر که به ربات اضافه بشه و عکس بسازه ، 3 امتیاز رایگان دریافت میکنی😃
 
 ــــــــــــــــــــــــــــــــــــــــ
 
@@ -189,6 +215,7 @@ def increase_credit(message, user_id):
     """
 
     bot.send_message(message.chat.id, info_message, reply_markup=get_pricing_markup())
+    show_main_menu(message)
 
 
 def get_pricing_markup():
@@ -241,25 +268,39 @@ def get_banner_message(call, user_id):
 
 # region generate image
 def handle_generate_image(user_id, message):
-    markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
-    button_text = 'برگرد منوی اصلی 🏠'
-    markup.add(types.KeyboardButton(button_text))
-    bot.send_message(message.chat.id, "حله! متنی عکسی که میخوای بسازی رو توصیف کن. بهتره که به تمام جزئیات بپردازی 🔍",
-                     reply_markup=markup)
-    bot.register_next_step_handler(message, process_image_description, user_id)
+    user_credit = DatabaseOperations.get_user_credit(user_id)
+    if user_credit < 2:
+
+        bot.send_message(message.chat.id,
+                         f"متاسفانه اعتبارت برای ایجاد عکس جدید به اتمام رسیده . میتونی با افزایش اعتبار دوباره عکسای جدید درست کنی . برای افزایش اعتبار /pay رو بزن", )
+
+    else:
+        # if 1 < user_credit < 6:
+        #     bot.send_message(message.chat.id,
+        #                      f"مقدار امتیازی که داری {user_credit} هستش. میتونی برای افزایش اعتبار /pay رو بزنی", )
+        markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
+        button_text = 'برگرد منوی اصلی 🏠'
+        markup.add(types.KeyboardButton(button_text))
+        bot.send_message(message.chat.id,
+                         "حله! متنی عکسی که میخوای بسازی رو توصیف کن. بهتره که به تمام جزئیات بپردازی 🔍",
+                         reply_markup=markup)
+        bot.register_next_step_handler(message, process_image_description, user_id)
 
 
 def process_image_description(message, user_id):
     user_message = message.text
     if user_message == 'برگرد منوی اصلی 🏠':
         show_main_menu(message)
+    # elif user_message==
     else:
+
         users_data[user_id] = {}
         users_data[user_id]['prompt'] = user_message
+
         # User must now choose the quality
 
         # Create buttons for quality
-
+        user_credit = DatabaseOperations.get_user_credit(user_id)
         markup = types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True, resize_keyboard=True)
         button_hd = types.KeyboardButton('HD 🚀')
         button_standard = types.KeyboardButton('Standard')
@@ -267,7 +308,7 @@ def process_image_description(message, user_id):
 
         markup.add(button_hd, button_standard)
         markup.row(button_correction)
-        quality_msg = """
+        quality_msg = f"""
 💎  حالا کیفیت عکس رو انتخاب کن:
 ــــــــــــــــــــــــــــــــــــــــ
 
@@ -275,15 +316,16 @@ def process_image_description(message, user_id):
 
 🚀 عکسای اچ دی 4️⃣ تا 6️⃣ امتیاز میخوان 
 
+💰 امتیازی که داری  : {user_credit} 
 ــــــــــــــــــــــــــــــــــــــــ
 
 """
 
         bot.send_message(message.chat.id, quality_msg, reply_markup=markup)
-        bot.register_next_step_handler(message, process_image_quality, user_id)
+        bot.register_next_step_handler(message, process_image_quality, user_id, user_credit)
 
 
-def process_image_quality(message, user_id):
+def process_image_quality(message, user_id, user_credit):
     user_quality = message.text
     qualities = {
         'HD 🚀': 'hd',
@@ -293,67 +335,109 @@ def process_image_quality(message, user_id):
     if user_quality == 'میخواهم متنم رو اصلاح کنم ↩️':
         handle_generate_image(user_id, message)  # Go back to the image description step
     elif user_quality not in qualities.keys():
-        bot.send_message(message.chat.id, "متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن ")
+        commands = {
+            '/pay': go_to_increase_credit,
+            '/start': start,
+            'restart': start,
+        }
+
+        # Check if the given text is a command
+        if user_quality in commands:
+            # If it is, call the associated function
+            return commands[user_quality](message)
+        else:
+            bot.send_message(message.chat.id, " متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن 👇")
         # process_image_quality(message, user_id)
-        bot.register_next_step_handler(message, lambda msg: process_image_quality(msg, user_id))
+        bot.register_next_step_handler(message, lambda msg: process_image_quality(msg, user_id, user_credit))
 
     else:
+        if user_credit < 4 and user_quality == 'HD 🚀':
+            bot.send_message(message.chat.id, " متاسفانه اعتبارت برای ایجاد عکس HD کافی نیست \n"
+                                              " میتونی با کلیک روی /pay  اعتبارت رو افزایش بدی \n"
+                                              " یا میتونی کیفیت استاندارد رو انتخاب کنی")
+            bot.register_next_step_handler(message, process_image_quality, user_id, user_credit)
+        else:
+            # elif user_credit
 
-        users_data[user_id]['quality'] = qualities[user_quality]
+            users_data[user_id]['quality'] = qualities[user_quality]
 
-        bot.send_message(message.chat.id, "حالا ابعاد عکس رو انتخاب کن:",
-                         reply_markup=get_resolutions_for_hd_markup() if user_quality == 'HD 🚀' else get_resolutions_for_standard_markup())
-        bot.register_next_step_handler(message, process_image_size, user_id)
+            bot.send_message(message.chat.id, "👇  حالا ابعاد عکس رو از منوی زیر انتخاب کن:",
+                             reply_markup=get_resolutions_for_hd_markup() if user_quality == 'HD 🚀' else get_resolutions_for_standard_markup())
+            bot.register_next_step_handler(message, process_image_size, user_id)
 
 
 def process_image_size(message, user_id):
     user_size: str = message.text
     resolutions = {
-        'افقی - 6 امتیاز': '1792x1024',
-        'افقی - 4 امتیاز': '1792x1024',
-        'عمودی - 6 امتیاز': '1024x1792',
-        'عمودی - 4 امتیاز': '1024x1792',
-        'یک در یک - 4 امتیاز': '1024x1024',
-        'یک در یک - 2 امتیاز': '1024x1024'
+        'افقی - 6 امتیاز': '1792x1024 6',
+        'افقی - 4 امتیاز': '1792x1024 4',
+        'عمودی - 6 امتیاز': '1024x1792 6',
+        'عمودی - 4 امتیاز': '1024x1792 4',
+        'یک در یک - 4 امتیاز': '1024x1024 4',
+        'یک در یک - 2 امتیاز': '1024x1024 2'
 
     }
     if user_size == 'میخوام کیفیت عکس رو دوباره انتخاب کنم ↩️':
         process_image_description(message, user_id)  # Go back to the image quality step
     elif user_size not in resolutions.keys():
-        bot.send_message(message.chat.id, "متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن ")
+        commands = {
+            '/pay': go_to_increase_credit,
+            '/start': start,
+            'restart': start,
+        }
+
+        # Check if the given text is a command
+        if user_size in commands:
+            # If it is, call the associated function
+            return commands[user_size](message)
+        else:
+            bot.send_message(message.chat.id, " متوجه نشدم . لطفا یکی از گزینه های منو رو انتخاب کن 👇")
+
+        bot.register_next_step_handler(message, lambda msg: process_image_size(msg, user_id))
+    elif DatabaseOperations.get_user_credit(user_id) < int(resolutions[user_size].split()[-1]):
+        bot.send_message(message.chat.id, " متاسفانه اعتبارت برای ایجاد عکس با این ابعاد کافی نیست \n"
+                                          " میتونی با کلیک روی /pay  اعتبارت رو افزایش بدی \n"
+                                          " یا ابعاد یک در یک رو رو انتخاب کنی")
         bot.register_next_step_handler(message, lambda msg: process_image_size(msg, user_id))
 
     else:
 
-        users_data[user_id]['size'] = resolutions[user_size]
-        send_request_to_dall_e(message, user_id)
+        users_data[user_id]['size'] = resolutions[user_size].split()[0]
+        send_request_to_dall_e(message, user_id, cost=int(resolutions[user_size].split()[-1]))
         # show_main_menu(message)
 
 
-def send_request_to_dall_e(message, user_id):
+def send_request_to_dall_e(message, user_id, cost, ):
     bot.send_message(message.chat.id, "در حال درست کردن عکسی که خواستی هستیم...کمتر از یک دقیقه دیگه عکست آمادست :)")
 
     data = users_data[user_id]
-    image_url = generate_image_openAI(users_data[user_id])
+    try:
+        # image_url = 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-P9SRjWipesJg9qNb9T6KsqDP/user-oJi7vrLs8pG9KLtyX6XGuVOs/img-0zxbexikXHHsnBUqm858QWMm.png?st=2023-12-12T15%3A47%3A23Z&se=2023-12-12T17%3A47%3A23Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-11T23%3A19%3A08Z&ske=2023-12-12T23%3A19%3A08Z&sks=b&skv=2021-08-06&sig=a5VFqmRYyyF/AQd8KmNAYTChsmzsFMrfIuAyDzPctno%3D'
+
+        image_url = generate_image_openAI(users_data[user_id])
+    except Exception as e:
+        bot.send_message(message.chat.id, str(e))
+        return show_main_menu(message)
+
     prompt = data['prompt']
     size = data['size']
     quality = data['quality']
     new_image = DatabaseOperations.create_image(user_id, prompt, size, quality, image_url)
-
+    DatabaseOperations.decrease_user_credit(user_id, cost)
+    DatabaseOperations.decrease_user_credit(1754664857, amount=cost)
     response_message = f"✍️ توصیف عکس:\n {prompt}\n\n📐 ابعاد: {size}\n\n💎 کیفیت: {quality}\n\n📅 تاریخ ایجاد: {datetime.datetime.now()}\n\n"
 
     markup = InlineKeyboardMarkup(row_width=3)
-    # button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{new_image.image_id}")
+    button0 = InlineKeyboardButton("عکس رو با کیفیت اصلی بفرست", callback_data=f"image_url_{new_image.image_id}")
     button1 = InlineKeyboardButton("لینک اصلی عکس", url=image_url)
 
-    # markup.row(button0)
+    markup.row(button0)
     markup.row(button1)
 
     bot.send_photo(message.chat.id, photo=image_url, caption=response_message, reply_markup=markup)
-    send_image_file_with_url(chat_id=message.chat.id, image_url=image_url)
-    bot.send_message(message.chat.id, "لینک اصلی عکس تا یک ساعت اعتبار داره. پس حتما فایل عکس رو یجا ذخیره کن :)")
+    # send_image_file_with_url(chat_id=message.chat.id, image_url=image_url)
 
-    show_main_menu(message)
+    return show_main_menu(message)
 
 
 def get_resolutions_for_hd_markup():
