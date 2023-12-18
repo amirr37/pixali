@@ -5,6 +5,7 @@ from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
 from openAI_connector import generate_image_openAI
+from zarinpaal import get_transaction_url
 
 # Bot setup
 api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
@@ -107,6 +108,12 @@ def callback_query(call):
         image_id = int(call.data[len("image_url_"):])
         image_url = DatabaseOperations.get_image_url(image_id)
         send_image_file_with_url(chat_id=call.message.chat.id, image_url=image_url)
+    elif call.data.startswith("pay_"):
+        amount = int(call.data[len("pay_"):])
+        url = get_transaction_url(amount)
+        bot.send_message(call.message.chat.id,
+                         f"لینک پرداخت بسته {amount} تومانی ساخته شد . \n میتونی از طریق لینک زیر برای پرداخت اقدام کنی 👇\n {url}")
+
 
     else:
         message = create_check_pay_message(call.data)
@@ -216,11 +223,11 @@ def get_pricing_markup():
     markup = InlineKeyboardMarkup(row_width=3)
     # markup.row_width = 2
     button0 = InlineKeyboardButton("دریافت اعتبار رایگان", callback_data="free")
-    button1 = InlineKeyboardButton("5 امتیاز 10 تومان", callback_data="pay_10")
-    button2 = InlineKeyboardButton("10 امتیاز 20 تومان", callback_data="pay_20")
-    button3 = InlineKeyboardButton("20 امتیاز 35 تومان", callback_data="pay_35")
-    button4 = InlineKeyboardButton("40 امتیاز 65 تومان", callback_data="pay_65")
-    button5 = InlineKeyboardButton("80 امتیاز 120 تومان", callback_data="pay_120")
+    button1 = InlineKeyboardButton("5 امتیاز 10 تومان", callback_data="pay_10000")
+    button2 = InlineKeyboardButton("10 امتیاز 20 تومان", callback_data="pay_20000")
+    button3 = InlineKeyboardButton("20 امتیاز 35 تومان", callback_data="pay_35000")
+    button4 = InlineKeyboardButton("40 امتیاز 65 تومان", callback_data="pay_65000")
+    button5 = InlineKeyboardButton("80 امتیاز 120 تومان", callback_data="pay_120000")
 
     markup.row(button0)
     markup.row(button1)

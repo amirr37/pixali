@@ -22,7 +22,6 @@ Base = declarative_base()
 # todo : zarrinpaal
 
 
-
 class User(Base):
     __tablename__ = 'user'
 
@@ -53,8 +52,20 @@ class Messages(Base):
     user_id = Column(Integer)
 
 
-db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
-Base.metadata.create_all(db_engine)
+class Transaction(Base):
+    __tablename__ = 'transaction'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer)
+    amount = Column(Integer)
+    description = Column(Text)
+    ref_id = Column(Text)
+    authority = Column(Text)
+    status = Column(Integer)
+    created_at = Column(DateTime, default=func.now())
+
+
+# db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
+# Base.metadata.create_all(db_engine)
 
 
 # Define the database operations class
