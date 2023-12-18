@@ -20,26 +20,20 @@ def start(message):
     user_id = message.from_user.id
     user_exists = DatabaseOperations.is_user_exists(user_id)
     if not user_exists:
-        print("user not exist------------------------------------------")
-        print("")
         DatabaseOperations.add_user(user_id)
-    else:
-        print("user exist------------------------------------------")
-    print(user_id)
-    print("---------------------------------------------------------")
-    if message.text.startswith('/start') and not user_exists:
-        parts = message.text.split(' ')
-        if len(parts) > 1:
-            invite_link = parts[1]
-            inviter_user_id = DatabaseOperations.get_user_by_invite_link(invite_link)
-            print("------------------------------------------")
-            print(f"invite link {invite_link}")
-            print("------------------------------------------")
-
-            if inviter_user_id:
-                print("before increase-------------------")
-                DatabaseOperations.increase_user_credit(inviter_user_id, 3)
-                print("aftert increase-------------------")
+        if message.text.startswith('/start'):
+            parts = message.text.split(' ')
+            if len(parts) > 1:
+                invite_link = parts[1]
+                inviter_user_id = DatabaseOperations.get_user_by_invite_link(invite_link)
+                if inviter_user_id:
+                    DatabaseOperations.increase_user_credit(inviter_user_id, 3)
+                    # todo: send message to inviter user "your credit increased to 3 points !"
+                    # Send a message to the inviter user
+                    inviter_user = bot.get_chat(inviter_user_id)
+                    inviter_username = inviter_user.username if inviter_user.username else f"User {inviter_user_id}"
+                    message_text = f"تبریک میگم ، یه نفر با لینک دعوت تو وارد پیکسالی شد. 3 امتیاز دیگه بهت تعلق گرفت :)"
+                    bot.send_message(inviter_user_id, message_text)
 
     show_main_menu(message)
 
@@ -83,7 +77,7 @@ def zarinpaal(message, user_id):
 def user_gallery(message, user_id):
     user_rows = DatabaseOperations.get_user_images(user_id)
     if not user_rows:
-        bot.send_message(message.chat.id, "شما تا کنون عکسی ایجاد نکردی :)")
+        bot.send_message(message.chat.id, "هنوز عکسی ایجاد نکردی \nاز منوی زیر می تونی یه عکس جدید بسازی 👇")
     else:
 
         for row in user_rows:

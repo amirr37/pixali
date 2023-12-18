@@ -1,18 +1,27 @@
 import uuid
-
-from sqlalchemy import create_engine, Column, Integer, Text, DateTime, func
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, Text, DateTime
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 
 
+# database session
+# invte link
+# invite link increase point message
+# add field joined at for user table
+
+
 # todo : file converting
-# todo : database session
-# todo : invte link
+# todo : description of channel
 # todo : attention for low credit message
 # todo : fix command loop
+# todo : zarrinpaal
+
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -20,10 +29,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True)
     credit = Column(Integer, default=3)
     invite_link = Column(Text)
-
-
-from sqlalchemy import Column, Integer, Text, DateTime
-from sqlalchemy.sql import func
+    joined_at = Column(DateTime, default=func.now(), nullable=True, )
 
 
 class Images(Base):
@@ -47,8 +53,8 @@ class Messages(Base):
     user_id = Column(Integer)
 
 
-# db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
-# Base.metadata.create_all(db_engine)
+db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
+Base.metadata.create_all(db_engine)
 
 
 # Define the database operations class
@@ -169,10 +175,12 @@ class DatabaseOperations:
 
     @classmethod
     def get_user_by_invite_link(cls, invite_link):
-        user = cls.session.query(User).filter_by(invite_link=invite_link).first()
-        return user.user_id if user else None
+        with cls.Session() as session:
+            user = session.query(User).filter_by(invite_link=invite_link).first()
+            return user.user_id if user else None
 
     @classmethod
     def get_image_url(cls, image_id):
-        image = cls.session.query(Images).filter_by(image_id=image_id).first()
-        return image.image_url if image else None
+        with cls.Session() as session:
+            image = session.query(Images).filter_by(image_id=image_id).first()
+            return image.image_url if image else None
