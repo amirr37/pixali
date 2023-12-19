@@ -4,7 +4,7 @@ import telebot
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
-from openAI_connector import generate_image_openAI
+from openai_connector import generate_image_openAI
 from env_pydantic import settings
 from zarinpaal import get_transaction_url
 from telebot import apihelper
@@ -119,6 +119,7 @@ def callback_query(call):
         url = get_transaction_url(amount)
         bot.send_message(call.message.chat.id,
                          f"لینک پرداخت بسته {amount} تومانی ساخته شد . \n میتونی از طریق لینک زیر برای پرداخت اقدام کنی 👇\n {url}")
+
 
 
     else:

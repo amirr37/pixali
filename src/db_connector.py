@@ -57,20 +57,22 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer)
     amount = Column(Integer)
-    description = Column(Text)
-    ref_id = Column(Text)
-    authority = Column(Text)
-    status = Column(Integer)
+    description = Column(Text, nullable=True)
+    ref_id = Column(Text, nullable=True)
+    authority = Column(Text, )
+    status = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now(), )
 
 
-# db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
+#
+# db_engine = create_engine('sqlite:///./../db.sqlite3', echo=True)
 # Base.metadata.create_all(db_engine)
 
 
 # Define the database operations class
 class DatabaseOperations:
-    db_engine = create_engine('sqlite:///db.sqlite3', echo=True)
+    db_engine = create_engine('sqlite:///./../db.sqlite3', echo=True)
     Session = sessionmaker(bind=db_engine)
     session = Session()
 
@@ -126,15 +128,9 @@ class DatabaseOperations:
     def decrease_user_credit(cls, user_id, amount):
         user = cls.session.query(User).filter_by(user_id=user_id).first()
         if user:
-            print("-------------------------------")
-            print(user.credit)
             user.credit -= amount
             cls.session.commit()
-            print(user.credit)
-            print("-------------------------------")
-
             return user
-        return None
 
     @classmethod
     def delete_user(cls, user_id):
@@ -195,3 +191,27 @@ class DatabaseOperations:
         with cls.Session() as session:
             image = session.query(Images).filter_by(image_id=image_id).first()
             return image.image_url if image else None
+
+    @classmethod
+    def create_transaction(cls, user_id, amount, authority):
+        new_transaction = Transaction(
+            user_id=user_id,
+            amount=amount,
+            authority=authority,
+            created_at=datetime.now()  # You might want to timestamp the transaction creation
+        )
+
+        cls.session.add(new_transaction)
+        cls.session.commit()
+        return new_transaction
+
+    @classmethod
+    def update_transaction(cls, authority, status, ref_id):
+        transaction = cls.session.query(Transaction).filter_by(authority=authority).first()
+        if transaction:
+            transaction.status = status
+            transaction.ref_id = ref_id
+            transaction.updated_at = datetime.now()
+            cls.session.commit()
+            return transaction
+        return None

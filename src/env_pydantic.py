@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pathlib import Path
 
 
 class BotSettings(BaseSettings):
@@ -8,7 +9,11 @@ class BotSettings(BaseSettings):
     openAI_api_key: str
 
     class Config:
-        env_file = ".env"
+        case_sensitive = False
+        BASE_DIR = Path(__file__).resolve().parent.parent
+        env_file = (str(BASE_DIR) + "/.env").replace("//", "/")
 
-
-settings = BotSettings()
+try:
+    settings = BotSettings()
+except Exception as e:
+    print(str(e))

@@ -36,15 +36,20 @@ def send_request():
 @app.route('/verify/', methods=['GET', 'POST'])
 def verify():
     client = Client(ZARINPAL_WEBSERVICE)
+    authority = request.args.get('Authority')  # Get the 'Authority' from URL
+    print(authority)
     if request.args.get('Status') == 'OK':
         result = client.service.PaymentVerification(MMERCHANT_ID,
                                                     request.args['Authority'],
                                                     amount)
         if result.Status == 100:
             print("-------------------------")
+            print(result)
+            print("-------------------------")
             print(result.RefID)
             print(result.Status)
-            print(result.Authority)
+            # todo : get authority from url
+
             print("-------------------------")
             return 'Transaction success. RefID: ' + str(result.RefID)
         elif result.Status == 101:
