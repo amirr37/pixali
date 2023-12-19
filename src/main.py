@@ -6,15 +6,17 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
 from openAI_connector import generate_image_openAI
 from zarinpaal import get_transaction_url
+from telebot import apihelper
 
 # Bot setup
-api_key = '6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc'
+api_key = ...
 bot = telebot.TeleBot(api_key)
-# ------------------------------------------
 users_data = {}
+apihelper.proxy = {
+    'http': f'socks5://192.168.1.10:10808',
+    'https': f'socks5://192.168.1.10:10808'
+}
 
-
-# ------------------------------------------
 
 @bot.message_handler(commands=['start', 'restart'])
 def start(message):
@@ -475,5 +477,6 @@ def get_resolutions_for_standard_markup():
     return markup
 
 
-# endregion
 bot.polling()
+
+# bot.message_loop()

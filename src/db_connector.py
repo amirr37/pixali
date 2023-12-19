@@ -14,7 +14,7 @@ Base = declarative_base()
 # invite link increase point message
 # add field joined at for user table
 
-
+# todo : /help
 # todo : file converting
 # todo : description of channel
 # todo : attention for low credit message

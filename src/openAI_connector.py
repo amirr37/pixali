@@ -3,18 +3,6 @@ from openai import OpenAI
 client = OpenAI(api_key='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')
 
 
-# response = client.images.generate(
-#     model="dall-e-3",
-#     prompt="a strong bodybuilder man holing dumble .",
-#     size="1024x1024",
-#     quality="standard",
-#     n=1,
-# )
-#
-# image_url = response.data[0].url
-#
-# print(image_url)
-
 
 def generate_image_openAI(data: dict) -> str:
     """

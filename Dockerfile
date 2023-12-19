@@ -1,5 +1,4 @@
-# Use an official Python runtime as a parent image
-FROM python:latest
+FROM python:3.9
 
 LABEL author="amir jahangiri"
 LABEL email="amirrj037@gmail.com"
@@ -9,7 +8,7 @@ LABEL email="amirrj037@gmail.com"
 WORKDIR /src
 
 # Copy the current directory contents into the container at /src
-COPY . .
+COPY /src .
 
 
 # Install any needed packages specified in requirements.txt
@@ -25,6 +24,6 @@ EXPOSE 80
 ENV TELEGRAM_BOT_API_KEY="6861008650:AAHVadlu-rvR_K1Khn7siWNfsjgrX3fpHrc"
 
 
-CMD ["python", "main.py"]
+CMD ["python3", "main.py"]
 
 
