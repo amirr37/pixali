@@ -1,7 +1,8 @@
 from openai import OpenAI
+from env_pydantic import settings
 
-client = OpenAI(api_key='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')
-
+api_key = settings.openAI_api_key
+client = OpenAI(api_key=api_key)
 
 
 def generate_image_openAI(data: dict) -> str:

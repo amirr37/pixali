@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-
 # Sample Flask ZarinPal WebGate with SOAP
-
 __author__ = 'Mohammad Reza Kamalifard, Hamid Feizabadi'
 __url__ = 'reyhoonsoft.ir , rsdn.ir'
 __license__ = "GPL 2.0 http://www.gnu.org/licenses/gpl-2.0.html"

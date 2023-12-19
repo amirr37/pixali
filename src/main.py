@@ -5,17 +5,21 @@ from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_connector import DatabaseOperations
 from openAI_connector import generate_image_openAI
+from env_pydantic import settings
 from zarinpaal import get_transaction_url
 from telebot import apihelper
 
-# Bot setup
-api_key = ...
+api_key = settings.telegram_api_key
+proxy_http = settings.proxy_http
+proxy_https = settings.proxy_https
+
 bot = telebot.TeleBot(api_key)
-users_data = {}
 apihelper.proxy = {
-    'http': f'socks5://192.168.1.10:10808',
-    'https': f'socks5://192.168.1.10:10808'
+    'http': proxy_http,
+    'https': proxy_https
 }
+
+users_data = {}
 
 
 @bot.message_handler(commands=['start', 'restart'])
